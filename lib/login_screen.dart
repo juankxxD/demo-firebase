@@ -1,4 +1,3 @@
-import 'package:demo_firebase/create_product_screen.dart';
 import 'package:demo_firebase/view_products_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';

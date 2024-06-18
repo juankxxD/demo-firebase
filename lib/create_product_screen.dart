@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:connectivity/connectivity.dart';
 
-class CreateProductScreen extends StatelessWidget {
+class CreateProductScreen extends StatefulWidget {
+  @override
+  State<CreateProductScreen> createState() => _CreateProductScreenState();
+}
+
+class _CreateProductScreenState extends State<CreateProductScreen> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _quantityController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
@@ -9,7 +15,44 @@ class CreateProductScreen extends StatelessWidget {
   final CollectionReference _productsCollection =
       FirebaseFirestore.instance.collection('productos');
 
-  Future<void> _addProduct() async {
+  String _syncMessage = ''; // Mensaje de estado de sincronización
+
+  @override
+  void initState() {
+    super.initState();
+    _initConnectivity();
+  }
+
+  void _initConnectivity() async {
+    ConnectivityResult result = await Connectivity().checkConnectivity();
+    if (result == ConnectivityResult.none) {
+      setState(() {
+        _syncMessage = 'Conexión perdida.';
+      });
+    } else {
+      setState(() {
+        _syncMessage = 'Conexión establecida.';
+      });
+      _syncData(); // Iniciar sincronización
+    }
+
+    Connectivity()
+        .onConnectivityChanged
+        .listen((ConnectivityResult connResult) {
+      if (connResult != ConnectivityResult.none) {
+        setState(() {
+          _syncMessage = 'Conexión restablecida. Sincronizando cambios...';
+        });
+        _syncData(); // Iniciar sincronización al restablecerse la conexión
+      } else {
+        setState(() {
+          _syncMessage = 'Conexión perdida.';
+        });
+      }
+    });
+  }
+
+  Future<void> _addProduct(BuildContext context) async {
     try {
       await _productsCollection.add({
         'name': _nameController.text.trim(),
@@ -17,9 +60,41 @@ class CreateProductScreen extends StatelessWidget {
         'description': _descriptionController.text.trim(),
         'value': double.parse(_valueController.text.trim()),
       });
-      // Producto agregado exitosamente
+      setState(() {
+        _syncMessage =
+            'Producto agregado localmente. Esperando conexión para subir.';
+      });
     } catch (e) {
-      // Manejar errores al agregar producto
+      setState(() {
+        _syncMessage =
+            'Error al agregar producto. Esperando conexión para intentar nuevamente.';
+      });
+    }
+  }
+
+  void _syncData() async {
+    QuerySnapshot pendingSnapshot = await _productsCollection.get();
+    if (pendingSnapshot.docs.isNotEmpty) {
+      for (var doc in pendingSnapshot.docs) {
+        try {
+          await _productsCollection.doc(doc.id).set(doc.data());
+        } catch (e) {
+          setState(() {
+            _syncMessage =
+                'Error al sincronizar datos. Intente nuevamente más tarde.';
+          });
+          return; // Salir del método si hay un error
+        }
+      }
+      setState(() {
+        _syncMessage = 'Datos sincronizados correctamente.';
+      });
+    } else {
+      if (_syncMessage == 'Conexión restablecida. Sincronizando cambios...') {
+        setState(() {
+          _syncMessage = 'No hay datos pendientes para sincronizar.';
+        });
+      }
     }
   }
 
@@ -52,8 +127,13 @@ class CreateProductScreen extends StatelessWidget {
             ),
             SizedBox(height: 20),
             ElevatedButton(
-              onPressed: _addProduct,
+              onPressed: () => _addProduct(context),
               child: Text('Crear Producto'),
+            ),
+            SizedBox(height: 20),
+            Text(
+              _syncMessage,
+              style: TextStyle(color: Colors.blue),
             ),
           ],
         ),

@@ -1,6 +1,7 @@
 import 'package:demo_firebase/create_product_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:geolocator/geolocator.dart';
 
 class ViewProductsScreen extends StatelessWidget {
   final CollectionReference _productsCollection =
@@ -37,15 +38,47 @@ class ViewProductsScreen extends StatelessWidget {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => CreateProductScreen()),
-          );
-        },
-        child: Icon(Icons.add),
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            onPressed: () {
+              _getLocation(context);
+            },
+            child: Icon(Icons.location_on),
+          ),
+          SizedBox(height: 16),
+          FloatingActionButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => CreateProductScreen()),
+              );
+            },
+            child: Icon(Icons.add),
+          ),
+        ],
       ),
     );
+  }
+
+  void _getLocation(BuildContext context) async {
+    try {
+      Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              'Ubicación obtenida: ${position.latitude}, ${position.longitude}'),
+        ),
+      );
+    } catch (e) {
+      print('Error al obtener la ubicación: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al obtener la ubicación'),
+        ),
+      );
+    }
   }
 }
