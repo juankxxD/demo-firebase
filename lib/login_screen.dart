@@ -1,47 +1,39 @@
-import 'package:demo_firebase/view_products_screen.dart';
+import 'package:demo_firebase/models/auth_model.dart';
+import 'package:demo_firebase/models/user_model.dart';
+import 'package:demo_firebase/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'register_screen.dart'; // Importa la pantalla de registro
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
+  static const name = 'login-screen';
   @override
-  _LoginScreenState createState() => _LoginScreenState();
+  LoginScreenState createState() => LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class LoginScreenState extends ConsumerState<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   void _login() async {
-    try {
-      UserCredential userCredential = await _auth.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
-      // Login exitoso
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) =>
-              ViewProductsScreen(), // Navega a la pantalla de agregar productos
-        ),
-      );
-    } on FirebaseAuthException catch (e) {
-      // Manejar errores de inicio de sesión
+    AuthModel authData = AuthModel(
+      email: _emailController.text.trim(),
+      password: _passwordController.text.trim(),
+    );
+    await ref.read(authNotifierProvider.notifier).signIn(authData);
+    UserModel? user = ref.read(authNotifierProvider);
+    print(user?.email);
+    if (user != null) {
+      context.go('/view-products');
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message ?? 'Error de inicio de sesión')),
+        SnackBar(content: Text('Error de inicio de sesión')),
       );
     }
   }
 
   void _goToRegisterScreen() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-          builder: (context) =>
-              RegisterScreen()), // Navega a la pantalla de registro
-    );
+    context.go('/sing-in');
   }
 
   @override
@@ -69,7 +61,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             SizedBox(height: 10),
             TextButton(
-              onPressed: _goToRegisterScreen, // Lleva a la pantalla de registro
+              onPressed: _goToRegisterScreen,
               child: Text('¿No tienes una cuenta? Regístrate aquí'),
             ),
           ],

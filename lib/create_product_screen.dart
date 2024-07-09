@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:connectivity/connectivity.dart';
 
 class CreateProductScreen extends StatefulWidget {
+  static const name = 'create-products-screen';
   @override
   State<CreateProductScreen> createState() => _CreateProductScreenState();
 }
